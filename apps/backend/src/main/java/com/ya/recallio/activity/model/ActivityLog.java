@@ -1,7 +1,6 @@
 package com.ya.recallio.activity.model;
 
 import com.ya.recallio.common.model.BaseEntity;
-import com.ya.recallio.routine.model.Routine;
 import com.ya.recallio.taxonomy.model.Category;
 import com.ya.recallio.taxonomy.model.Tag;
 import com.ya.recallio.user.model.User;
@@ -43,10 +42,6 @@ public class ActivityLog extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "routine_id")
-    private Routine routine;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

@@ -2,12 +2,15 @@ package com.ya.recallio.routine.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ya.recallio.routine.model.RecurrenceUnit;
 import com.ya.recallio.routine.model.Routine;
+import com.ya.recallio.routine.model.RoutineScheduleType;
 import com.ya.recallio.routine.model.RoutineStatus;
+import com.ya.recallio.routine.model.RoutineTimingMode;
 import com.ya.recallio.taxonomy.model.Category;
 import com.ya.recallio.taxonomy.model.Tag;
 import com.ya.recallio.user.model.User;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -78,6 +81,37 @@ class RoutineRepositoryTest {
                 .doesNotContain(archivedRoutine.getId());
     }
 
+    @Test
+    void searchOwnedRoutinesMatchesPlanningContextWithoutCrossUserLeakage() {
+        User owner = persistUser("context-owner@example.com");
+        User otherUser = persistUser("context-other@example.com");
+
+        Routine matchingRoutine = persistRoutine(owner, "Morning run", "Outdoor cardio", RoutineStatus.ACTIVE, null);
+        matchingRoutine.setPlaceLabel("Riverside park");
+        matchingRoutine.setContextNote("Before breakfast");
+        entityManager.persistAndFlush(matchingRoutine);
+
+        Routine foreignRoutine = persistRoutine(otherUser, "Morning run", "Foreign cardio", RoutineStatus.ACTIVE, null);
+        foreignRoutine.setPlaceLabel("Riverside park");
+        foreignRoutine.setContextNote("Before breakfast");
+        entityManager.persistAndFlush(foreignRoutine);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Routine> results = routineRepository.searchOwnedRoutines(
+                        owner.getId(),
+                        RoutineStatus.ACTIVE,
+                        "park",
+                        PageRequest.of(0, 10, Sort.by("name"))
+                )
+                .getContent();
+
+        assertThat(results)
+                .extracting(Routine::getId)
+                .containsExactly(matchingRoutine.getId());
+    }
+
     private User persistUser(String email) {
         User user = new User();
         user.setEmail(email);
@@ -109,9 +143,13 @@ class RoutineRepositoryTest {
         routine.setDescription(description);
         routine.setStatus(status);
         routine.setCategory(category);
-        routine.setRecurrenceInterval(1);
-        routine.setRecurrenceUnit(RecurrenceUnit.DAY);
-        routine.setStartAt(OffsetDateTime.of(2026, 3, 1, 8, 0, 0, 0, ZoneOffset.UTC));
+        routine.setIntervalValue(1);
+        routine.setScheduleType(RoutineScheduleType.WEEKLY);
+        routine.setDayOfWeek(DayOfWeek.MONDAY);
+        routine.setTimingMode(RoutineTimingMode.AT_TIME);
+        routine.setTimeStart(LocalTime.of(8, 0));
+        routine.setActiveFrom(OffsetDateTime.of(2026, 3, 1, 8, 0, 0, 0, ZoneOffset.UTC));
+        routine.setContextNote("Default repository test context");
 
         for (Tag tag : tags) {
             routine.addTag(tag);

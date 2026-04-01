@@ -25,9 +25,25 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
     Optional<ActivityLog> findByIdAndUserId(UUID activityLogId, UUID userId);
 
     /**
-     * Supports routine-based last-done lookup with a deterministic tie-breaker.
+     * Supports routine-based last-done lookup with a deterministic tie-breaker through the occurrence link.
      */
-    Optional<ActivityLog> findTopByUserIdAndRoutineIdOrderByOccurredAtDescCreatedAtDesc(UUID userId, UUID routineId);
+    @Query("""
+            select activityLog
+            from ActivityLog activityLog
+            join RoutineOccurrence occurrence on occurrence.activityLog = activityLog
+            where activityLog.user.id = :userId
+              and occurrence.routine.id = :routineId
+            order by activityLog.occurredAt desc, activityLog.createdAt desc
+            """)
+    List<ActivityLog> findLatestRoutineLinkedLogs(
+            @Param("userId") UUID userId,
+            @Param("routineId") UUID routineId,
+            Pageable pageable
+    );
+
+    default Optional<ActivityLog> findTopByUserIdAndRoutineIdOrderByOccurredAtDescCreatedAtDesc(UUID userId, UUID routineId) {
+        return findLatestRoutineLinkedLogs(userId, routineId, Pageable.ofSize(1)).stream().findFirst();
+    }
 
     /**
      * Supports free-form activity last-done lookup for logs not necessarily tied to a routine.
@@ -44,7 +60,8 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
                     from ActivityLog activityLog
                     left join activityLog.category category
                     left join activityLog.tags tag
-                    left join activityLog.routine routine
+                    left join RoutineOccurrence occurrence on occurrence.activityLog = activityLog
+                    left join occurrence.routine routine
                     where activityLog.user.id = :userId
                       and (:routineId is null or routine.id = :routineId)
                       and (:categoryId is null or category.id = :categoryId)
@@ -65,7 +82,8 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
                     from ActivityLog activityLog
                     left join activityLog.category category
                     left join activityLog.tags tag
-                    left join activityLog.routine routine
+                    left join RoutineOccurrence occurrence on occurrence.activityLog = activityLog
+                    left join occurrence.routine routine
                     where activityLog.user.id = :userId
                       and (:routineId is null or routine.id = :routineId)
                       and (:categoryId is null or category.id = :categoryId)
@@ -98,19 +116,22 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> 
     @Query("""
             select activityLog
             from ActivityLog activityLog
+            join RoutineOccurrence occurrence on occurrence.activityLog = activityLog
             where activityLog.user.id = :userId
-              and activityLog.routine.id in :routineIds
+              and occurrence.routine.id in :routineIds
               and activityLog.occurredAt = (
                   select max(candidate.occurredAt)
                   from ActivityLog candidate
+                  join RoutineOccurrence candidateOccurrence on candidateOccurrence.activityLog = candidate
                   where candidate.user.id = :userId
-                    and candidate.routine.id = activityLog.routine.id
+                    and candidateOccurrence.routine.id = occurrence.routine.id
               )
               and activityLog.createdAt = (
                   select max(candidateAtSameTime.createdAt)
                   from ActivityLog candidateAtSameTime
+                  join RoutineOccurrence candidateAtSameTimeOccurrence on candidateAtSameTimeOccurrence.activityLog = candidateAtSameTime
                   where candidateAtSameTime.user.id = :userId
-                    and candidateAtSameTime.routine.id = activityLog.routine.id
+                    and candidateAtSameTimeOccurrence.routine.id = occurrence.routine.id
                     and candidateAtSameTime.occurredAt = activityLog.occurredAt
               )
             """)

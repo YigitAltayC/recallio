@@ -3,12 +3,17 @@ package com.ya.recallio.activity.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ya.recallio.activity.model.ActivityLog;
-import com.ya.recallio.routine.model.RecurrenceUnit;
 import com.ya.recallio.routine.model.Routine;
+import com.ya.recallio.routine.model.RoutineOccurrence;
+import com.ya.recallio.routine.model.RoutineOccurrenceStatus;
+import com.ya.recallio.routine.model.RoutineScheduleType;
 import com.ya.recallio.routine.model.RoutineStatus;
+import com.ya.recallio.routine.model.RoutineTimingMode;
 import com.ya.recallio.taxonomy.model.Category;
 import com.ya.recallio.taxonomy.model.Tag;
 import com.ya.recallio.user.model.User;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -167,9 +172,11 @@ class ActivityLogRepositoryTest {
         routine.setUser(user);
         routine.setName(name);
         routine.setStatus(RoutineStatus.ACTIVE);
-        routine.setRecurrenceInterval(1);
-        routine.setRecurrenceUnit(RecurrenceUnit.DAY);
-        routine.setStartAt(atUtc(2026, 3, 1, 8, 0));
+        routine.setIntervalValue(1);
+        routine.setScheduleType(RoutineScheduleType.DAILY);
+        routine.setTimingMode(RoutineTimingMode.AT_TIME);
+        routine.setTimeStart(LocalTime.of(8, 0));
+        routine.setActiveFrom(atUtc(2026, 3, 1, 8, 0));
         return entityManager.persistAndFlush(routine);
     }
 
@@ -184,7 +191,6 @@ class ActivityLogRepositoryTest {
     ) {
         ActivityLog activityLog = new ActivityLog();
         activityLog.setUser(user);
-        activityLog.setRoutine(routine);
         activityLog.setCategory(category);
         activityLog.setActivityName(activityName);
         activityLog.setNotes(notes);
@@ -194,7 +200,27 @@ class ActivityLogRepositoryTest {
             activityLog.addTag(tag);
         }
 
-        return entityManager.persistAndFlush(activityLog);
+        ActivityLog persistedLog = entityManager.persistAndFlush(activityLog);
+
+        if (routine != null) {
+            persistOccurrence(user, routine, persistedLog);
+        }
+
+        return persistedLog;
+    }
+
+    private RoutineOccurrence persistOccurrence(User user, Routine routine, ActivityLog activityLog) {
+        RoutineOccurrence occurrence = new RoutineOccurrence();
+        occurrence.setUser(user);
+        occurrence.setRoutine(routine);
+        occurrence.setScheduledDate(LocalDate.from(activityLog.getOccurredAt()));
+        occurrence.setWindowStartAt(activityLog.getOccurredAt().minusHours(1));
+        occurrence.setWindowEndAt(activityLog.getOccurredAt().plusHours(1));
+        occurrence.setStatus(RoutineOccurrenceStatus.COMPLETED);
+        occurrence.setCompletedAt(activityLog.getOccurredAt());
+        occurrence.setCheckedAt(activityLog.getOccurredAt());
+        occurrence.setActivityLog(activityLog);
+        return entityManager.persistAndFlush(occurrence);
     }
 
     private OffsetDateTime atUtc(int year, int month, int dayOfMonth, int hour, int minute) {

@@ -35,7 +35,7 @@ public interface RoutineRepository extends JpaRepository<Routine, UUID> {
     List<Routine> findAllByUserIdAndStatusOrderByNameAsc(UUID userId, RoutineStatus status);
 
     /**
-     * Supports routine search across the routine itself and its taxonomy references.
+     * Supports routine search across the routine itself, schedule clues, planning context, and taxonomy references.
      * Due/overdue interpretation intentionally remains outside the repository.
      */
     @Query(
@@ -51,6 +51,11 @@ public interface RoutineRepository extends JpaRepository<Routine, UUID> {
                           or trim(:searchTerm) = ''
                           or lower(routine.name) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(routine.description, '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.dayOfWeek), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.dayOfMonth), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.scheduleType), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(routine.placeLabel, '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(routine.contextNote, '')) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(category.name, '')) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(tag.name, '')) like lower(concat('%', :searchTerm, '%'))
                       )
@@ -67,6 +72,11 @@ public interface RoutineRepository extends JpaRepository<Routine, UUID> {
                           or trim(:searchTerm) = ''
                           or lower(routine.name) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(routine.description, '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.dayOfWeek), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.dayOfMonth), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(str(routine.scheduleType), '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(routine.placeLabel, '')) like lower(concat('%', :searchTerm, '%'))
+                          or lower(coalesce(routine.contextNote, '')) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(category.name, '')) like lower(concat('%', :searchTerm, '%'))
                           or lower(coalesce(tag.name, '')) like lower(concat('%', :searchTerm, '%'))
                       )

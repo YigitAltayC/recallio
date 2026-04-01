@@ -20,6 +20,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -28,7 +30,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Describes a repeatable activity that can be evaluated for due and overdue states.
+ * Describes a user-defined routine plan that later produces trackable occurrences.
  */
 @Getter
 @Setter
@@ -77,16 +79,66 @@ public class Routine extends BaseEntity {
 
     @Min(1)
     @Column(nullable = false)
-    private Integer recurrenceInterval = 1;
+    private Integer intervalValue = 1;
 
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    private RecurrenceUnit recurrenceUnit = RecurrenceUnit.DAY;
+    private RoutineScheduleType scheduleType = RoutineScheduleType.DAILY;
+
+    /**
+     * Used when the schedule is weekly and a specific weekday matters.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private DayOfWeek dayOfWeek;
+
+    /**
+     * Used when the schedule is monthly and a specific calendar day matters.
+     */
+    @Min(1)
+    @Column(name = "day_of_month")
+    private Integer dayOfMonth;
+
+    /**
+     * Keeps the time expectation explicit without forcing every routine to have a clock-bound schedule.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private RoutineTimingMode timingMode = RoutineTimingMode.ANYTIME;
+
+    /**
+     * Marks the start of the expected time or time window when timing is relevant.
+     */
+    @Column(name = "time_start")
+    private LocalTime timeStart;
+
+    /**
+     * Marks the end of the expected time window when the routine is flexible within a range.
+     */
+    @Column(name = "time_end")
+    private LocalTime timeEnd;
+
+    /**
+     * Optional place hint for routines that are associated with a location.
+     */
+    @Size(max = 120)
+    @Column(length = 120)
+    private String placeLabel;
+
+    /**
+     * Optional planning context such as "before breakfast" or "after the evening walk".
+     */
+    @Size(max = 500)
+    @Column(length = 500)
+    private String contextNote;
 
     @NotNull
     @Column(nullable = false)
-    private OffsetDateTime startAt;
+    private OffsetDateTime activeFrom;
+
+    private OffsetDateTime activeUntil;
 
     @Min(0)
     private Integer dueSoonLeadTimeMinutes;
