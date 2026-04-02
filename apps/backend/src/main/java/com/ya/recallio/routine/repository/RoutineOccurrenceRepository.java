@@ -20,7 +20,19 @@ public interface RoutineOccurrenceRepository extends JpaRepository<RoutineOccurr
 
     Optional<RoutineOccurrence> findByRoutineIdAndScheduledDateAndUserId(UUID routineId, LocalDate scheduledDate, UUID userId);
 
+    Optional<RoutineOccurrence> findTopByRoutineIdAndUserIdAndStatusAndActivityLogIsNotNullOrderByCompletedAtDescCreatedAtDesc(
+            UUID routineId,
+            UUID userId,
+            RoutineOccurrenceStatus status
+    );
+
     List<RoutineOccurrence> findAllByRoutineIdAndUserIdOrderByWindowStartAtAsc(UUID routineId, UUID userId);
+
+    List<RoutineOccurrence> findAllByUserIdAndStatusAndWindowEndAtBeforeOrderByWindowEndAtAsc(
+            UUID userId,
+            RoutineOccurrenceStatus status,
+            OffsetDateTime windowEndAt
+    );
 
     /**
      * Loads occurrences in a time window so services can decide which reminders or calendar checks to show.
